@@ -1,3 +1,4 @@
+import { renderDateViewCalendar } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 dayjs.extend(customParseFormat);
@@ -5,9 +6,9 @@ dayjs.extend(customParseFormat);
 const dailyRemainder = [
   {
     name: "Drink Water",
-    startDate: "2026-01-10",
+    startDate: "2026-01-12",
     endDate: "2026-01-17",
-    times: ["9:00 AM", "12:00 PM", "3:00 PM", "8:00 PM", "9:00 AM", "3:00 PM"],
+    times: ["11:59 PM", "12:00 AM", "1:00 AM", "3:00 AM", "9:00 AM"],
     type: "DAILY",
   },
 ];
@@ -37,7 +38,9 @@ const days = [
 // Task: Implement the function nextReminder
 // Bulk Reminder Function
 
-const remainders = [dailyRemainder, weeklyRemainder];
+const remainders = [...dailyRemainder, ...weeklyRemainder];
+
+const checkEndDate = (endDate) => !dayjs().isAfter(endDate);
 
 const checkRemainderType = (type) => {
   switch (type) {
@@ -61,48 +64,64 @@ const checkNextDay = (RemainderDays = []) => {
   return null;
 };
 
-const checkNextTime = (RemainderTimes = []) => {
-  const now = dayjs();
-  console.log("Current Time:", now.format("h:mm A"));
-  console.log("Remainder Times:", RemainderTimes);
-  for (let i = 0; i < RemainderTimes.length; i++) {
-    let rt = dayjs(RemainderTimes[i], "h:mm A");
-    console.log("Remainder Time:", rt);
-    if (rt.isAfter(now)) {
-      return rt.format("h:mm A");
-    }
+const sort = (remTimes) =>
+  remTimes.sort(
+    // sorting the array of remainder times
+    (a, b) => dayjs(a, "h:mm A") - dayjs(b, "h:mm A")
+  );
+
+const checkNextTime = (remainderTimes = [], startDate) => {
+  remainderTimes = sort(remainderTimes);
+  const start = dayjs(startDate, "YYYY-MM-DD"); // start date
+  const now = dayjs().isBefore(start) ? start : dayjs();
+  for (let time of remainderTimes) {
+    const rt = dayjs(time, "h:mm A")
+      .year(now.year())
+      .month(now.month())
+      .date(now.date());
+    if (rt.isAfter(now) || rt.isSame(now))
+      return rt.format("YYYY-MM-DD h:mm A");
   }
-  return null;
+  const newDay = now.add(1, "d");
+  return newDay.format("YYYY-MM-DD ") + remainderTimes[0];
 };
 
-export const NextReminder = (
-  remainders = [],
+export const nextReminder = (
+  remainder,
   currentDate = dayjs().format("YYYY-MM-DD h:mm d")
 ) => {
-  for (let i = 0; i < remainders.length; i++) {
-    for (let j = 0; j < remainders[i].length; j++) {
-      const remainderType = checkRemainderType(remainders[i][j].type);
-      console.log("Remainder Type:", remainderType);
+  console.log(checkEndDate(remainder.endDate));
+  let nextRemTime, remainderType;
+  const isExpired = checkEndDate(remainder.endDate);
+  if (isExpired) {
+    remainderType = checkRemainderType(remainder.type);
+    console.log("Remainder Type:", remainderType);
+    if (remainderType === "WEEKLY") {
+      console.log(
+        "Next Remainder is in: " + checkNextDay(remainder.days) // checks next remainder day and displays it
+      );
+    }
+    if (remainderType === "DAILY") {
+      nextRemTime = checkNextTime(remainder.times, remainder.startDate); // checks next remainder time and displays it
 
-      if (remainderType === "WEEKLY") {
-        console.log(
-          "Next Remainder is in: " + checkNextDay(remainders[i][j].days) // checks next remainder day and displays it
-        );
-      }
-      if (remainderType === "DAILY") {
-        console.log(
-          "Next Remainder is in: " + checkNextTime(remainders[i][j].times) // checks next remainder time and displays it
-        );
-      }
+      console.log(
+        "Next Remainder is in: " + nextRemTime // checks next remainder time and displays it
+      );
     }
   }
-  console.log("Remainders:", remainders);
+  console.log("Remainders:", remainder);
   console.log("Current Date:", currentDate);
-  return [];
+  return {
+    name: remainder.name,
+    startDate: remainder.startDate,
+    endDate: remainder.endDate,
+    type: remainderType,
+    remainderTime: nextRemTime,
+    expired: isExpired,
+  };
 };
 
-NextReminder(remainders);
-
-const getBulkReminders = (remainders = [], currentDate, count) => {
-  return [];
+const getBulkReminders = (remainders = []) => {
+  remainders.map((remainder) => nextReminder(remainder));
 };
+getBulkReminders(remainders);

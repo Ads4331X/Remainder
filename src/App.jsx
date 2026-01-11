@@ -1,6 +1,6 @@
 import "./App.css";
-import { NextReminder } from "./test";
 import Remainder from "./component/remainder";
+import { nextReminder } from "./test";
 
 function App() {
   return (
